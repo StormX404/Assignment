@@ -13,7 +13,7 @@ interface CitiesApi {
     )
     @GET("cities")
     suspend fun getCities(
-        @Query("namePrefix") namePrefix: String,
+        @Query("namePrefix") namePrefix: String? = null,
         @Query("limit") limit: Int = 10,
         @Query("offset") offset: Int = 0
     ): CitiesResponse

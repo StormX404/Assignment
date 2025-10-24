@@ -35,8 +35,12 @@ fun CitiesScreen(
     val error by viewModel.error.collectAsState()
 
     LaunchedEffect(query) {
-        delay(400)
-        viewModel.searchCities(query)
+        if (query.isNotBlank()) {
+            delay(800)
+            viewModel.searchCities(query)
+        } else {
+            viewModel.resetPagination()
+        }
     }
 
     Scaffold(
@@ -58,17 +62,6 @@ fun CitiesScreen(
             Spacer(modifier = Modifier.height(12.dp))
 
             when {
-                isLoading -> {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(top = 32.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        CircularProgressIndicator()
-                    }
-                }
-
                 error != null -> {
                     Text(
                         text = "Error: ${error!!}",
@@ -78,7 +71,7 @@ fun CitiesScreen(
                     )
                 }
 
-                cities.isEmpty() && query.isNotBlank() && !isLoading -> {
+                cities.isEmpty() && !isLoading && query.isNotBlank() -> {
                     Text(
                         text = "No cities found for \"$query\".",
                         style = MaterialTheme.typography.bodyMedium,
@@ -87,15 +80,12 @@ fun CitiesScreen(
                 }
 
                 cities.isEmpty() && query.isBlank() && !isLoading -> {
-                    Text(
-                        text = "Start typing in the search box to find cities.",
-                        style = MaterialTheme.typography.bodyMedium,
-                        modifier = Modifier.padding(16.dp)
-                    )
+                    viewModel.searchCities(query)
                 }
 
                 else -> {
-                    val groupedCities = cities.groupBy { it.name.firstOrNull()?.uppercaseChar() ?: '#' }
+                    val groupedCities =
+                        cities.groupBy { it.name.firstOrNull()?.uppercaseChar() ?: '#' }
 
                     LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         groupedCities.forEach { (initial, group) ->
@@ -114,7 +104,10 @@ fun CitiesScreen(
                                 CityRow(
                                     city = city,
                                     onClick = {
-                                        val gmmIntentUri = "geo:${city.latitude},${city.longitude}?q=${Uri.encode(city.name)}".toUri()
+                                        val gmmIntentUri =
+                                            "geo:${city.latitude},${city.longitude}?q=${
+                                                Uri.encode(city.name)
+                                            }".toUri()
                                         val mapIntent =
                                             Intent(Intent.ACTION_VIEW, gmmIntentUri).apply {
                                                 setPackage("com.google.android.apps.maps")
@@ -123,7 +116,10 @@ fun CitiesScreen(
                                             context.startActivity(mapIntent)
                                         } else {
                                             context.startActivity(
-                                                Intent(Intent.ACTION_VIEW, gmmIntentUri)
+                                                Intent(
+                                                    Intent.ACTION_VIEW,
+                                                    gmmIntentUri
+                                                )
                                             )
                                         }
                                     },
@@ -131,7 +127,35 @@ fun CitiesScreen(
                                 )
                             }
                         }
+
+                        item {
+                            if (isLoading) {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(16.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    CircularProgressIndicator()
+                                }
+                            } else {
+                                LaunchedEffect(cities.size) {
+                                    viewModel.loadMore()
+                                }
+                            }
+                        }
                     }
+                }
+            }
+
+            if (isLoading && cities.isEmpty()) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(top = 32.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    CircularProgressIndicator()
                 }
             }
         }
